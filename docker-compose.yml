@@ -1,0 +1,6 @@
+version: "3"
+services:
+  skeleton:
+    container_name: skeleton
+    image: skeleton:latest
+    restart: always
