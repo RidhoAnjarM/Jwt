@@ -14,8 +14,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	// db.Connect()
-	db.Connect()
+	
+	db.ConnectDatabase()
 
 	gin.SetMode(gin.DebugMode)
 	engine := gin.Default()
@@ -28,17 +28,12 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
-	r := gin.Default()
-
-	// Routes
-    r.POST("/register", middlewares.Register)
-    r.POST("/login", middlewares.Login)
-
 }
 
 func routes(r *gin.Engine) {
 	r.GET("/ping", func(c *gin.Context) {
 		c.String(200, "pong")
 	})
+	r.POST("/register", middlewares.Register)
+	r.POST("/login", middlewares.Login)
 }
