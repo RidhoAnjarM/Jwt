@@ -1,8 +1,9 @@
 package main
 
 import (
+	"main/controllers"
 	"main/db"
-	"main/middlewares"
+	"main/middleware"
 	"os"
 
 	"github.com/gin-gonic/gin"
@@ -19,7 +20,7 @@ func main() {
 
 	gin.SetMode(gin.DebugMode)
 	engine := gin.Default()
-	engine.Use(middlewares.Cors())
+	engine.Use(middleware.Cors())
 	routes(engine)
 
 	host := os.Getenv("HOST") + ":" + os.Getenv("PORT")
@@ -34,6 +35,7 @@ func routes(r *gin.Engine) {
 	r.GET("/ping", func(c *gin.Context) {
 		c.String(200, "pong")
 	})
-	r.POST("/register", middlewares.Register)
-	r.POST("/login", middlewares.Login)
+	r.POST("/register", controllers.Register)
+	r.POST("/login", controllers.Login)
+	r.GET("/me", middleware.AuthMiddleware(), controllers.Me)
 }
