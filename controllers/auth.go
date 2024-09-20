@@ -3,83 +3,84 @@ package controllers
 import (
 	"main/db"
 	"net/http"
-	"os"
-	"time"
-	"log"
-	"strings"
-
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
-	"github.com/joho/godotenv"
 	"golang.org/x/crypto/bcrypt"
+	"github.com/golang-jwt/jwt/v5"
+	"time"
 )
 
-var JwtKey []byte
+var JwtKey = []byte("your_secret_key")
 
-// Inisialisasi kunci JWT dari environment
-func init() {
-	godotenv.Load()
-	JwtKey = []byte(os.Getenv("JWT_SECRET"))
-
-	if len(JwtKey) == 0 {
-		log.Fatal("JWT_SECRET tidak diatur")
-	}
+type RegisterInput struct {
+	Name     string `json:"name" binding:"required"`
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required,min=8"`
+	Phone    string `json:"phone" binding:"required"`
+	Gender   string `json:"gender" binding:"required"`
+	Photo    string `json:"photo"`
+	Address  string `json:"address"`
+	RoleID   uint   `json:"role_id" binding:"required"` 
 }
 
+// Register handler
 func Register(c *gin.Context) {
-	var input struct {
-		Name     string `json:"name" binding:"required"`
-		Email    string `json:"email" binding:"required,email"`
-		Phone    string `json:"phone" binding:"required"`
-		Password string `json:"password" binding:"required,min=8"`
-	}
+	var input RegisterInput
+    if err := c.ShouldBindJSON(&input); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+        return
+    }
 
-	// Validasi input JSON
-	if err := c.ShouldBindJSON(&input); err != nil {
-
-		if strings.Contains(err.Error(), "Password") {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Password minimal harus 8 karakter :)"})
-			return
-		}
-		// Jika error lain (misal field lain tidak sesuai)
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	// Cek apakah email sudah terdaftar
+	// Periksa apakah email sudah terdaftar
 	var existingUser db.User
 	if err := db.DB.Where("email = ?", input.Email).First(&existingUser).Error; err == nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Email sudah terdaftar"})
 		return
 	}
 
-	// Hash password
+	// Enkripsi password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal hash password"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal meng-enkripsi password"})
 		return
 	}
 
-	// Simpan user baru ke database
-	user := db.User{Name: input.Name, Email: input.Email, Phone: input.Phone, Password: string(hashedPassword)}
+	// Cari role berdasarkan RoleID
+	var role db.Role
+	if err := db.DB.First(&role, input.RoleID).Error; err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Role tidak ditemukan"})
+		return
+	}
 
+	// Buat user baru
+	user := db.User{
+		Name:     input.Name,
+		Email:    input.Email,
+		Password: string(hashedPassword),
+		Phone:    input.Phone,
+		Gender:   input.Gender,
+		Photo:    input.Photo,
+		Address:  input.Address,
+		RoleID:   role.ID, 
+	}
+
+	// Simpan user ke database
 	if err := db.DB.Create(&user).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mendaftarkan user"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membuat pengguna"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "User berhasil didaftarkan"})
+	c.JSON(http.StatusOK, gin.H{"message": "Pengguna berhasil dibuat"})
 }
 
+// Login handler
+type LoginInput struct {
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required"`
+}
 
-// Login user dan buat token
+// Login handler
 func Login(c *gin.Context) {
-	var input struct {
-		Email    string `json:"email" binding:"required,email"`
-		Password string `json:"password" binding:"required"`
-	}
-
-	// Validasi input login
+	var input LoginInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -88,55 +89,36 @@ func Login(c *gin.Context) {
 	// Cari user berdasarkan email
 	var user db.User
 	if err := db.DB.Where("email = ?", input.Email).First(&user).Error; err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Kredensial tidak valid"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Email atau password salah"})
 		return
 	}
 
-	// Cek password
+	// Cek apakah password valid
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(input.Password)); err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Kredensial tidak valid"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Email atau password salah"})
 		return
 	}
 
 	// Buat token JWT
-	token, err := generateJWT(user.Email)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"sub":  user.Email,
+		"role": user.RoleID,  // Masukkan RoleID ke dalam token
+		"exp":  time.Now().Add(time.Hour * 72).Unix(),
+	})
+
+	tokenString, err := token.SignedString(JwtKey)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membuat token"})
 		return
 	}
 
-	log.Println("Generated Token:", token)
-
-	c.JSON(http.StatusOK, gin.H{"token": token})
+	c.JSON(http.StatusOK, gin.H{
+		"token": tokenString,
+	})
 }
 
-// Endpoint untuk mendapatkan user yang sedang login
+// Me handler
 func Me(c *gin.Context) {
-	user, exists := c.Get("user")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User tidak ditemukan"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"user": user})
-}
-
-// Membuat token JWT
-func generateJWT(email string) (string, error) {
-	expirationTime := time.Now().Add(24 * time.Hour)
-
-	claims := &jwt.RegisteredClaims{
-		ExpiresAt: jwt.NewNumericDate(expirationTime),
-		IssuedAt:  jwt.NewNumericDate(time.Now()),
-		Subject:   email,
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString(JwtKey)
-
-	if err != nil {
-		return "", err
-	}
-
-	return tokenString, nil
+	user, _ := c.Get("user")
+	c.JSON(http.StatusOK, user)
 }

@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"main/controllers"
 	"main/db"
 	"net/http"
 	"strings"
@@ -15,7 +14,6 @@ func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		tokenString := c.GetHeader("Authorization")
 
-		// Validasi format token "Bearer <token>"
 		if len(tokenString) < 7 || strings.ToUpper(tokenString[:7]) != "BEARER " {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Token tidak valid"})
 			c.Abort()
@@ -24,9 +22,8 @@ func AuthMiddleware() gin.HandlerFunc {
 
 		tokenString = tokenString[7:]
 
-		// Parsing token
 		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-			return controllers.JwtKey, nil
+			return []byte("your_secret_key"), nil
 		})
 
 		if err != nil || !token.Valid {
@@ -35,7 +32,6 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// Ambil user dari token
 		if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 			email := claims["sub"].(string)
 
@@ -46,6 +42,7 @@ func AuthMiddleware() gin.HandlerFunc {
 				return
 			}
 
+			// Simpan user ke context
 			c.Set("user", user)
 		} else {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Klaim token tidak valid"})
@@ -53,5 +50,31 @@ func AuthMiddleware() gin.HandlerFunc {
 		}
 
 		c.Next()
+	}
+}
+
+// Middleware untuk mengecek peran role
+func RoleMiddleware(allowedRoles ...string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Ambil data user dari context
+		user, exists := c.Get("user")
+		if !exists {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Tidak ada pengguna yang diautentikasi"})
+			c.Abort()
+			return
+		}
+
+		userRole := user.(db.User).Role.Name
+
+		for _, role := range allowedRoles {
+			if userRole == role {
+				c.Next()
+				return
+			}
+		}
+
+		// Jika tidak cocok, tolak akses
+		c.JSON(http.StatusForbidden, gin.H{"error": "Akses ditolak"})
+		c.Abort()
 	}
 }
