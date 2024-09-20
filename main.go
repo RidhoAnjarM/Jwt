@@ -40,30 +40,30 @@ func routes(r *gin.Engine) {
 	r.GET("/me", middleware.AuthMiddleware(), controllers.Me)
 
 	//user
-	r.POST("/users/create", middleware.AuthMiddleware(), middleware.RoleMiddleware("admin"), controllers.CreateUser)
-	r.GET("/users/get", middleware.AuthMiddleware(), middleware.RoleMiddleware("admin"), controllers.GetUsers)
-	r.GET("/users/get/:id", middleware.AuthMiddleware(), middleware.RoleMiddleware("admin", "technician"), controllers.GetUser)
-	r.PUT("/users/update/:id", middleware.AuthMiddleware(), middleware.RoleMiddleware("admin"), controllers.UpdateUser)
-	r.DELETE("/users/delete/:id", middleware.AuthMiddleware(), middleware.RoleMiddleware("admin"), controllers.DeleteUser)
+	r.POST("/users/create", middleware.AuthMiddleware(), middleware.RoleMiddleware(1), controllers.CreateUser)
+	r.GET("/users/get", middleware.AuthMiddleware(), middleware.RoleMiddleware(1), controllers.GetUsers)
+	r.GET("/users/get/:id", middleware.AuthMiddleware(), middleware.RoleMiddleware(1), controllers.GetUser)
+	r.PUT("/users/update/:id", middleware.AuthMiddleware(), middleware.RoleMiddleware(1), controllers.UpdateUser)
+	r.DELETE("/users/delete/:id", middleware.AuthMiddleware(), middleware.RoleMiddleware(1), controllers.DeleteUser)
 
 	//role
-	r.POST("/role/create", middleware.AuthMiddleware(), middleware.RoleMiddleware("admin"), controllers.CreateRole)
-	r.GET("/role/get", middleware.AuthMiddleware(), middleware.RoleMiddleware("admin"), controllers.GetRoles)
-	r.GET("/role/get/:id", middleware.AuthMiddleware(), middleware.RoleMiddleware("admin"), controllers.GetRole)
-	r.PUT("/role/update/:id", middleware.AuthMiddleware(), middleware.RoleMiddleware("admin"), controllers.UpdateRole)
-	r.DELETE("/role/delete/:id", middleware.AuthMiddleware(), middleware.RoleMiddleware("admin"), controllers.DeleteRole)
+	r.POST("/role/create", middleware.AuthMiddleware(), middleware.RoleMiddleware(1), controllers.CreateRole)
+	r.GET("/role/get", middleware.AuthMiddleware(), middleware.RoleMiddleware(1), controllers.GetRoles)
+	r.GET("/role/get/:id", middleware.AuthMiddleware(), middleware.RoleMiddleware(1), controllers.GetRole)
+	r.PUT("/role/update/:id", middleware.AuthMiddleware(), middleware.RoleMiddleware(1), controllers.UpdateRole)
+	r.DELETE("/role/delete/:id", middleware.AuthMiddleware(), middleware.RoleMiddleware(1), controllers.DeleteRole)
 
 	//ac
-	r.POST("/ac/create", middleware.AuthMiddleware(), middleware.RoleMiddleware("admin"), controllers.CreateAC)
+	r.POST("/ac/create", middleware.AuthMiddleware(), middleware.RoleMiddleware(1), controllers.CreateAC)
 	r.GET("/ac/get", middleware.AuthMiddleware(), controllers.GetACs)
 	r.GET("/ac/get/:id", middleware.AuthMiddleware(), controllers.GetAC)
-	r.PUT("/ac/update/:id", middleware.AuthMiddleware(), middleware.RoleMiddleware("admin"), controllers.UpdateAC)
-	r.DELETE("/ac/delete/:id", middleware.AuthMiddleware(), middleware.RoleMiddleware("admin"), controllers.DeleteAC)
+	r.PUT("/ac/update/:id", middleware.AuthMiddleware(), middleware.RoleMiddleware(1), controllers.UpdateAC)
+	r.DELETE("/ac/delete/:id", middleware.AuthMiddleware(), middleware.RoleMiddleware(1), controllers.DeleteAC)
 
 	//service
-	r.POST("/service/create", middleware.AuthMiddleware(), middleware.RoleMiddleware("admin", "technician"), controllers.CreateService)
+	r.POST("/service/create", middleware.AuthMiddleware(), middleware.RoleMiddleware(1, 2), controllers.CreateService)
 	r.GET("/service/get", middleware.AuthMiddleware(), controllers.GetServices)
-	r.GET("/service/get/:id", middleware.AuthMiddleware(), middleware.RoleMiddleware("admin", "technician"), controllers.GetService)
-	r.PUT("/service/update/:id", middleware.AuthMiddleware(), middleware.RoleMiddleware("admin", "technician"), controllers.UpdateService)
-	r.DELETE("/service/delete/:id", middleware.AuthMiddleware(), middleware.RoleMiddleware("admin"), controllers.DeleteService)
+	r.GET("/service/get/:id", middleware.AuthMiddleware(), middleware.RoleMiddleware(1, 2), controllers.GetService)
+	r.PUT("/service/update/:id", middleware.AuthMiddleware(), middleware.RoleMiddleware(1, 2), controllers.UpdateService)
+	r.DELETE("/service/delete/:id", middleware.AuthMiddleware(), middleware.RoleMiddleware(1), controllers.DeleteService)
 }

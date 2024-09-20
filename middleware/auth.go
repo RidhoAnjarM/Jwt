@@ -54,7 +54,7 @@ func AuthMiddleware() gin.HandlerFunc {
 }
 
 // Middleware untuk mengecek peran role
-func RoleMiddleware(allowedRoles ...string) gin.HandlerFunc {
+func RoleMiddleware(allowedRoles ...uint) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Ambil data user dari context
 		user, exists := c.Get("user")
@@ -64,10 +64,11 @@ func RoleMiddleware(allowedRoles ...string) gin.HandlerFunc {
 			return
 		}
 
-		userRole := user.(db.User).Role.Name
+		userRoleID := user.(db.User).RoleID
 
-		for _, role := range allowedRoles {
-			if userRole == role {
+		// Cek apakah userRoleID ada di allowedRoles
+		for _, roleID := range allowedRoles {
+			if userRoleID == roleID {
 				c.Next()
 				return
 			}
